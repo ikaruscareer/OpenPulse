@@ -1,4 +1,5 @@
 """Entity resolution: normalize aliases -> CanonicalProject slug."""
+
 from __future__ import annotations
 
 import re
@@ -13,11 +14,13 @@ ALIAS_MAP = {
     "bitnami": "bitnami",
 }
 
+
 def normalize_ref(ref: str) -> str:
     r = ref.strip().lower()
     r = re.sub(r":.*$", "", r)  # strip :tag
     r = re.sub(r"@.*$", "", r)  # strip @digest
     return r
+
 
 def resolve_project(ref: str) -> str:
     """Return canonical slug for a package/artifact ref. Falls back to normalized ref."""

@@ -1,8 +1,8 @@
 """OpenPulse Intelligence Schema v0.1.0 — pydantic models (source of truth)."""
+
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
-from typing import List, Optional
 
 from pydantic import BaseModel, Field, HttpUrl
 
@@ -21,20 +21,21 @@ class Source(BaseModel):
 class Evidence(BaseModel):
     source: Source
     excerpt: str = Field(max_length=2000)
-    effective_date: Optional[date] = None
-    announcement_date: Optional[date] = None
+    effective_date: date | None = None
+    announcement_date: date | None = None
 
 
 class CanonicalProject(BaseModel):
     """Entity resolution root: one project, many names/packages."""
+
     slug: str  # e.g. "bitnami", "redis", "postgresql"
     display_name: str
-    github_repo: Optional[str] = None  # "org/repo"
-    website: Optional[HttpUrl] = None
-    purls: List[str] = []
-    cpes: List[str] = []
-    aliases: List[str] = []  # e.g. ["redis", "redis-server", "docker.io/redis", "bitnami/redis"]
-    docker_images: List[str] = []
+    github_repo: str | None = None  # "org/repo"
+    website: HttpUrl | None = None
+    purls: list[str] = []
+    cpes: list[str] = []
+    aliases: list[str] = []  # e.g. ["redis", "redis-server", "docker.io/redis", "bitnami/redis"]
+    docker_images: list[str] = []
 
 
 class Artifact(BaseModel):
@@ -51,9 +52,9 @@ class OSSEvent(BaseModel):
     summary: str
     confidence: Confidence
     impact: Impact
-    affected_versions: List[str] = []
-    affected_artifacts: List[Artifact] = []
-    evidences: List[Evidence] = Field(min_length=1)
+    affected_versions: list[str] = []
+    affected_artifacts: list[Artifact] = []
+    evidences: list[Evidence] = Field(min_length=1)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     def requires_action(self) -> bool:
