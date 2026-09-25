@@ -1,0 +1,38 @@
+{
+  "id": "evt-bitnami-2025-distribution-001",
+  "schema_version": "0.1.0",
+  "project_slug": "bitnami",
+  "event_type": "DISTRIBUTION_CHANGE",
+  "title": "Bitnami announces distribution/support model change (validation fixture)",
+  "summary": "Bitnami public announcement changes how images/charts are distributed/supported. Replace dates/URLs with real announcement during Phase 3 validation. Affected: bitnami/* OCI artifacts.",
+  "confidence": "CORROBORATED",
+  "impact": "ACTION",
+  "affected_versions": ["*"],
+  "affected_artifacts": [
+    {"kind": "docker-image", "ref": "docker.io/bitnami/redis:7.2"},
+    {"kind": "helm-chart", "ref": "oci://registry-1.docker.io/bitnamicharts/redis"}
+  ],
+  "evidences": [
+    {
+      "source": {
+        "name": "bitnami/official-blog",
+        "url": "https://blog.bitnami.com/",
+        "authority": "official",
+        "fetched_at": "2026-09-25T00:00:00Z"
+      },
+      "excerpt": "REPLACE with verbatim announcement excerpt (2-3 sentences).",
+      "announcement_date": "2025-08-28",
+      "effective_date": "2025-08-28"
+    },
+    {
+      "source": {
+        "name": "github/bitnami-containers",
+        "url": "https://github.com/bitnami/containers",
+        "authority": "official",
+        "fetched_at": "2026-09-25T00:00:00Z"
+      },
+      "excerpt": "REPLACE with corroborating README/release note excerpt.",
+      "announcement_date": "2025-08-28"
+    }
+  ]
+}

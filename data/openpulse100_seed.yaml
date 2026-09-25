@@ -1,0 +1,22 @@
+# OpenPulse 100 — seed (v0.3 target: ~100; start with 20, transparent methodology)
+# Fields: slug, display_name, github, category, rationale
+- {slug: kubernetes, display_name: Kubernetes, github: kubernetes/kubernetes, category: infra, rationale: orchestration standard}
+- {slug: helm, display_name: Helm, github: helm/helm, category: infra, rationale: k8s packaging}
+- {slug: terraform, display_name: Terraform, github: hashicorp/terraform, category: infra, rationale: IaC widely used}
+- {slug: postgresql, display_name: PostgreSQL, github: postgres/postgres, category: db, rationale: primary RDBMS}
+- {slug: mysql, display_name: MySQL, github: mysql/mysql-server, category: db, rationale: legacy footprint}
+- {slug: redis, display_name: Redis, github: redis/redis, category: db, rationale: cache/session}
+- {slug: mongodb, display_name: MongoDB, github: mongodb/mongo, category: db, rationale: document DB}
+- {slug: kafka, display_name: Kafka, github: apache/kafka, category: messaging, rationale: event streaming}
+- {slug: rabbitmq, display_name: RabbitMQ, github: rabbitmq/rabbitmq-server, category: messaging, rationale: message broker}
+- {slug: prometheus, display_name: Prometheus, github: prometheus/prometheus, category: observability, rationale: metrics}
+- {slug: grafana, display_name: Grafana, github: grafana/grafana, category: observability, rationale: dashboards}
+- {slug: opentelemetry, display_name: OpenTelemetry, github: open-telemetry/opentelemetry-collector, category: observability, rationale: tracing standard}
+- {slug: nodejs, display_name: Node.js, github: nodejs/node, category: lang, rationale: runtime}
+- {slug: spring-boot, display_name: Spring Boot, github: spring-projects/spring-boot, category: lang, rationale: Java enterprise}
+- {slug: django, display_name: Django, github: django/django, category: lang, rationale: Python web}
+- {slug: fastapi, display_name: FastAPI, github: fastapi/fastapi, category: lang, rationale: Python API}
+- {slug: pytorch, display_name: PyTorch, github: pytorch/pytorch, category: ai, rationale: ML framework}
+- {slug: langchain, display_name: LangChain, github: langchain-ai/langchain, category: ai, rationale: agent framework}
+- {slug: openssl, display_name: OpenSSL, github: openssl/openssl, category: security, rationale: crypto base}
+- {slug: keycloak, display_name: Keycloak, github: keycloak/keycloak, category: security, rationale: IAM}
