@@ -23,25 +23,34 @@ Rules today:
 ## Security Analyst (`analyzers/security_analyst.py`)
 
 Merges OSV + NVD + CVE + KEV entries by CVE ID: source list, max CVSS,
-KEV flag, reference union — plus a `relationship` label:
+KEV flag, reference union — plus `relationship`, `match_method`,
+`identity_evidence`, severity, urgency, and recommended_action:
 
-- `AFFECTS_PACKAGE` — identity evidence exists (OSV query scope, NVD CPE
-  vendor/product match, or CNA affected-product match).
+- `AFFECTS_VERSION` — version evaluated inside a range (OSV events or
+  NVD CPE range attributes) via `core/versions.py`.
+- `AFFECTS_PACKAGE` — identity evidence exists (OSV query scope,
+  normalized-exact CPE/CNA product match) but version unproven.
 - `RELATED` — the CVE exists but nothing ties it to this project
   (keyword-only NVD hits land here and cap at `REVIEW`).
 - `UNKNOWN` — no score and no identity signal.
 
-Impact: KEV exact/strong + identity → `CRITICAL`; KEV alone →
-`REVIEW` (exploited, relation unconfirmed); identity + score ≥ 9 →
-`ACTION`; ≥ 7 → `REVIEW`; else `WATCH`. Weak KEV matches never set
-`in_kev`.
+CPE matching is normalized-exact only: token overlap (`spring` vs
+`spring-shell`) is never identity. Impact: KEV + AFFECTS →
+`CRITICAL`; KEV alone → `REVIEW`; AFFECTS_VERSION ≥ 7 / AFFECTS_PACKAGE
+≥ 9 → `ACTION`. Weak KEV matches never set `in_kev`. Findings name
+their match method (`osv_package[+version_range]`, `cpe_version_range`,
+`cpe_vendor_product`, `keyword_only`); `keyword_only` never yields
+`AFFECTS_VERSION`/`AFFECTS_ARTIFACT`.
 
 ## Evidence Analyst (`analyzers/evidence_analyst.py`)
 
-`assess_confidence`: official source → `CONFIRMED`; ≥2 distinct
+`assess_confidence`: official source → `CONFIRMED`; ≥2 independent
 sources → `CORROBORATED`; single secondary → `EMERGING`; else
-`UNVERIFIED`. `assemble_event` builds the OSSEvent and returns
-`(event, gate_violations)` — callers must handle violations.
+`UNVERIFIED`. `assemble_event` builds the OSSEvent (claims included)
+and returns `(event, gate_violations)` — callers must handle
+violations. Claims (`core/claims.py`) name supporting source names;
+contradictions surface as `⚠️ CONTRADICTS` and unresolved conflict
+blocks strong actions.
 
 ## OSS Pulse (`core/pulse.py`)
 

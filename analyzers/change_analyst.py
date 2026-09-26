@@ -89,8 +89,10 @@ def analyze_endoflife(
 def analyze_registries(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Map registry probes to distribution findings.
 
-    Bitnami pattern: mainline latest-only + legacy holding versioned
-    tags == versioned distribution moved behind a new model.
+    Reference rule (Bitnami pattern): mainline latest-only + legacy
+    holding versioned tags == versioned distribution moved behind a
+    new model. Kept here as the documented reference demonstrating the
+    generic engine; the observation/diff layer stays product-agnostic.
     """
     by_repo = {
         (e.get("namespace"), e.get("repo")): e

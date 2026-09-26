@@ -46,6 +46,7 @@ def assemble_event(
     affected_versions: list[str] | None = None,
     affected_artifacts: list[dict[str, str]] | None = None,
     evidences: list[dict[str, Any]],
+    claims: list[dict[str, Any]] | None = None,
 ) -> tuple[OSSEvent, list[str]]:
     """Build an OSSEvent with inferred confidence; return (event, gate violations)."""
     event = OSSEvent(
@@ -59,5 +60,6 @@ def assemble_event(
         affected_versions=affected_versions or [],
         affected_artifacts=affected_artifacts or [],  # type: ignore[arg-type]
         evidences=evidences,  # type: ignore[arg-type]
+        claims=claims or [],  # type: ignore[arg-type]
     )
     return event, gate(event)

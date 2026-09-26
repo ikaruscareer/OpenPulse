@@ -12,9 +12,35 @@ from collectors.errors import as_error
 API = "https://api.osv.dev/v1/query"
 
 
+def _affected_ranges(entry: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
+    """(ranges with events, fixed versions) for one OSV affected entry."""
+    ranges = []
+    fixed: list[str] = []
+    for rng in entry.get("ranges", []) or []:
+        events = [e for e in rng.get("events", []) or [] if isinstance(e, dict)]
+        for event in events:
+            if event.get("fixed") and event["fixed"] not in fixed:
+                fixed.append(str(event["fixed"]))
+        ranges.append({"type": rng.get("type"), "events": events})
+    return ranges, fixed
+
+
 def parse_vulns(package: str, ecosystem: str, payload: dict[str, Any]) -> list[dict[str, Any]]:
     out = []
     for v in payload.get("vulns", []):
+        affected = []
+        for a in v.get("affected", []) or []:
+            pkg = a.get("package", {}) or {}
+            ranges, fixed = _affected_ranges(a)
+            affected.append(
+                {
+                    "package": pkg.get("name", package),
+                    "ecosystem": pkg.get("ecosystem", ecosystem),
+                    "ranges": ranges,
+                    "fixed": fixed,
+                    "versions": (a.get("versions", []) or [])[:50],
+                }
+            )
         out.append(
             {
                 "collector": "osv",
@@ -23,6 +49,7 @@ def parse_vulns(package: str, ecosystem: str, payload: dict[str, Any]) -> list[d
                 "id": v.get("id"),
                 "summary": v.get("summary"),
                 "severity": v.get("severity"),
+                "affected": affected,
                 "references": [x.get("url") for x in v.get("references", []) if x.get("url")],
             }
         )

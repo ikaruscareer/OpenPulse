@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from core.claims import conflict_status
 from core.evidence.independence import independent_count
 from core.schema.enums import Confidence, EventType, Impact
 from core.schema.models import OSSEvent
@@ -59,6 +60,30 @@ def gate(event: OSSEvent) -> list[str]:
     relations = {e.relation for e in event.evidences}
     if relations and relations == {"contradicts"}:
         violations.append("event has only contradicting evidence — no support for the claim")
+
+    # 3c. Explicit claims must each resolve to supporting evidence.
+    # An official-but-unrelated source never satisfies a claim.
+    supporting = {e.source.name for e in event.evidences if e.relation in ("supports", "context")}
+    for claim in event.claims:
+        if not set(claim.evidence_refs) & supporting:
+            violations.append(f"claim {claim.id} has no supporting evidence")
+
+    # 3d. Unresolved conflict blocks strong action; provenance is
+    # required for high-impact conclusions.
+    if conflict_status([e.model_dump() for e in event.evidences]) == "UNRESOLVED" and imp in (
+        "ACTION",
+        "CRITICAL",
+    ):
+        violations.append("unresolved conflicting evidence blocks ACTION/CRITICAL")
+    if imp in ("ACTION", "CRITICAL"):
+        proven = any(
+            e.source.authority in ("official", "primary")
+            or e.source.content_hash
+            or e.source.parser_version
+            for e in event.evidences
+        )
+        if not proven:
+            violations.append("ACTION/CRITICAL requires official/primary or hashed provenance")
 
     # 4. Distribution/support/license/ownership must name affected artifacts
     if typ in REQUIRES_ARTIFACTS and not event.affected_artifacts:

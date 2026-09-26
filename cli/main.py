@@ -104,17 +104,22 @@ def _live_bundle(slug):
     from collectors.kev.collector import KEVCollector
     from collectors.nvd.collector import NVDCollector
     from collectors.registries.docker import RegistryCollector
+    from collectors.registries.reference import bitnami_distribution_probes
     from core.entities.catalog import load_catalog
 
     repo_map = {e["slug"]: e["github"] for e in load_catalog() if e.get("github")}
     github = GitHubCollector(repo_map)
+    registries = RegistryCollector()
     return {
         "endoflife": EndoflifeCollector().collect(slug),
         "github": github.collect(slug),
         "github_meta": [github.fetch_repo_meta(slug)],
         "nvd": NVDCollector().collect(slug),
         "kev": KEVCollector().collect(slug),
-        "registries": RegistryCollector().collect(slug),
+        # Bitnami is a rehearsed reference scenario, not generic acquisition.
+        "registries": bitnami_distribution_probes(registries)
+        if slug == "bitnami"
+        else registries.collect(slug),
     }
 
 
@@ -123,7 +128,13 @@ def _live_bundle(slug):
 @click.option(
     "--raw-bundle", type=click.Path(exists=True), help="Offline raw collector bundle JSON"
 )
-def analyze(project, raw_bundle):
+@click.option(
+    "--version",
+    "project_version",
+    default=None,
+    help="Deployed version (enables version-applicability checks)",
+)
+def analyze(project, raw_bundle, project_version):
     """Run analysts over live collectors (or an offline bundle) and print findings."""
     slug = resolve_project(project)
     if raw_bundle:
@@ -137,7 +148,10 @@ def analyze(project, raw_bundle):
     change = change_analyst.analyze(raw)
     from core.entities.catalog import project_context
 
-    security = security_analyst.correlate(raw, project_context(slug))
+    context = project_context(slug)
+    if project_version:
+        context["version"] = project_version
+    security = security_analyst.correlate(raw, context)
     click.echo(f"\n## Change findings ({len(change)})")
     for finding in change:
         click.echo("\n" + report_analyst.render_finding_md(finding))

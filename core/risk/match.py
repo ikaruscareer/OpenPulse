@@ -38,18 +38,25 @@ def match_artifact(ref: str, artifact_ref: str) -> bool:
 
 
 def event_affects_ref(event: OSSEvent, ref: str) -> dict[str, str | bool | None]:
-    """Return {affected, via, detail} for one dependency ref."""
+    """Return {affected, via, relationship, detail} for one dependency ref."""
     for a in event.affected_artifacts:
         if match_artifact(ref, a.ref):
             return {
                 "affected": True,
                 "via": "artifact",
+                "relationship": "AFFECTS_ARTIFACT",
                 "detail": f"{ref} matches affected artifact {a.ref}",
             }
     if resolve_project(ref) == event.project_slug:
         return {
             "affected": True,
             "via": "project",
+            "relationship": "AFFECTS_PROJECT",
             "detail": f"{ref} resolves to watched project {event.project_slug}",
         }
-    return {"affected": False, "via": None, "detail": f"{ref} matches nothing in {event.id}"}
+    return {
+        "affected": False,
+        "via": None,
+        "relationship": "UNKNOWN",
+        "detail": f"{ref} matches nothing in {event.id}",
+    }

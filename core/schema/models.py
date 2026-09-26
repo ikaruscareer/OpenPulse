@@ -1,4 +1,4 @@
-"""OpenPulse Intelligence Schema v0.2.0 — pydantic models (source of truth)."""
+"""OpenPulse Intelligence Schema v0.3.0 — pydantic models (source of truth)."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, HttpUrl
 
 from .enums import Confidence, EventType, Impact
 
-SCHEMA_VERSION = "0.2.0"
+SCHEMA_VERSION = "0.3.0"
 
 
 class Source(BaseModel):
@@ -64,6 +64,25 @@ class Artifact(BaseModel):
     ref: str  # e.g. "docker.io/bitnami/redis:7.2"
 
 
+class Claim(BaseModel):
+    """One checkable assertion with named supporting evidence (no graph)."""
+
+    id: str
+    type: str = Field(description="Event type or 'vulnerability'")
+    subject: str = Field(description="What the claim is about")
+    statement: str = Field(description="The checkable assertion")
+    evidence_refs: list[str] = Field(default_factory=list, description="Supporting source names")
+
+
+class Attribution(BaseModel):
+    """What the evidence establishes — populate only what is known."""
+
+    affected_project: str | None = None
+    affected_package: str | None = None
+    affected_artifact: str | None = None
+    affected_version: str | None = None
+
+
 class OSSEvent(BaseModel):
     id: str
     schema_version: str = SCHEMA_VERSION
@@ -76,6 +95,8 @@ class OSSEvent(BaseModel):
     affected_versions: list[str] = []
     affected_artifacts: list[Artifact] = []
     evidences: list[Evidence] = Field(min_length=1)
+    claims: list[Claim] = Field(default_factory=list)
+    attribution: Attribution | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     def requires_action(self) -> bool:

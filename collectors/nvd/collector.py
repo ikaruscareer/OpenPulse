@@ -36,6 +36,14 @@ def _cvss(metrics: dict[str, Any]) -> dict[str, Any]:
     return {}
 
 
+_RANGE_ATTRS = (
+    "versionStartIncluding",
+    "versionStartExcluding",
+    "versionEndIncluding",
+    "versionEndExcluding",
+)
+
+
 def _cpes(configurations: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """CPE match criteria — the identity evidence keyword search cannot give."""
     out = []
@@ -44,7 +52,11 @@ def _cpes(configurations: list[dict[str, Any]]) -> list[dict[str, Any]]:
             for match in node.get("cpeMatch", []) + node.get("cpe_match", []):
                 criteria = match.get("criteria")
                 if criteria and not any(c["criteria"] == criteria for c in out):
-                    out.append({"criteria": criteria, "vulnerable": bool(match.get("vulnerable"))})
+                    entry = {"criteria": criteria, "vulnerable": bool(match.get("vulnerable"))}
+                    for attr in _RANGE_ATTRS:
+                        if match.get(attr) is not None:
+                            entry[attr] = match[attr]
+                    out.append(entry)
     return out
 
 

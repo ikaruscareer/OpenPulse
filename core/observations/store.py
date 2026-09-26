@@ -57,3 +57,13 @@ def load_previous(
     if not files:
         return None
     return json.loads(files[-1].read_text(encoding="utf-8"))
+
+
+def first_observed(
+    registry: str, namespace: str, repository: str, root: str | Path = ".openpulse/observations"
+) -> dict[str, Any] | None:
+    """Earliest stored observation, if any."""
+    files = list_observations(registry, namespace, repository, root)
+    if not files:
+        return None
+    return json.loads(files[0].read_text(encoding="utf-8"))

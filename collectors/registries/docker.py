@@ -57,14 +57,9 @@ class RegistryCollector(BaseCollector):
             return as_error("registries", e, namespace=namespace, repo=repo)
 
     def collect(self, project_slug: str) -> list[dict[str, Any]]:
-        # Generic entry: callers use check_image() for specific namespaces.
-        # Default: probe bitnami distribution namespaces for redis as smoke signal.
-        if project_slug == "bitnami":
-            return [
-                self.check_image("bitnami", "redis"),
-                self.check_image("bitnamilegacy", "redis"),
-                self.check_image("bitnamisecure", "redis"),
-            ]
+        # Generic acquisition knows nothing product-specific: callers use
+        # check_image(namespace, repo) directly, or a named reference set
+        # from collectors/registries/reference.py for rehearsed scenarios.
         return [
             {
                 "collector": "registries",

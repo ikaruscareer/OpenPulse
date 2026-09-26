@@ -13,27 +13,29 @@ from datetime import datetime, timezone
 
 from pydantic import BaseModel, Field
 
-from core.evidence.provenance import PARSER_VERSION, hash_content
+from core.observations.base import ObservationBase
 
 
-class RegistryObservation(BaseModel):
+class RegistryObservation(ObservationBase):
+    source: str = "docker-hub"
     collector: str = "registries"
     registry: str = "docker.io"
     namespace: str
     repository: str
-    observed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     tags: dict[str, list[str]] = Field(
         default_factory=dict, description="tag -> sorted image digests (multi-arch aware)"
     )
     tag_count: int | None = None
     missing: bool = False
-    content_hash: str | None = None
-    parser_version: str = PARSER_VERSION
 
-    def seal(self) -> RegistryObservation:
-        """Attach the content hash. Observations are immutable after sealing."""
-        self.content_hash = hash_content(
-            {
+    def seal(self, body: dict | None = None) -> RegistryObservation:  # type: ignore[override]
+        """Attach content hash + observation id. Immutable after sealing."""
+        self.entity_reference = self.entity_reference or (
+            f"{self.registry}/{self.namespace}/{self.repository}"
+        )
+        super().seal(
+            body
+            or {
                 "registry": self.registry,
                 "namespace": self.namespace,
                 "repository": self.repository,
@@ -57,6 +59,8 @@ class Change(BaseModel):
     tag: str | None = None
     previous: list[str] | None = None
     current: list[str] | None = None
+    previous_hash: str | None = Field(default=None, description="Previous observation content_hash")
+    current_hash: str | None = Field(default=None, description="Current observation content_hash")
     observed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -80,7 +84,13 @@ def diff_observations(prev: RegistryObservation | None, curr: RegistryObservatio
     if prev.content_hash == curr.content_hash and prev.missing == curr.missing:
         return []
     changes: list[Change] = []
-    common = {"registry": curr.registry, "namespace": curr.namespace, "repository": curr.repository}
+    common = {
+        "registry": curr.registry,
+        "namespace": curr.namespace,
+        "repository": curr.repository,
+        "previous_hash": prev.content_hash,
+        "current_hash": curr.content_hash,
+    }
     if curr.missing and not prev.missing:
         return [Change(type="repo_missing", observed_at=curr.observed_at, **common)]
     if not curr.missing and prev.missing:

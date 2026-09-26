@@ -58,12 +58,19 @@ def render_event_md(event: OSSEvent) -> str:
             for k, v in (("announced", e.announcement_date), ("effective", e.effective_date))
             if v
         )
+        marker = "⚠️ CONTRADICTS: " if e.relation == "contradicts" else "- "
         lines.append(
-            f"- [{src.name}]({src.url}) (authority={src.authority}"
+            f"{marker}[{src.name}]({src.url}) (authority={src.authority}"
             + (f", {dates}" if dates else "")
             + ")"
         )
         lines.append(f"  > {e.excerpt}")
+    if event.claims:
+        lines += ["", "Claims:"]
+        lines += [
+            f"- `{c.id}` ({c.type}) → {', '.join(c.evidence_refs) or 'no refs'}"
+            for c in event.claims
+        ]
     lines += ["", f"Recommendation: {ADVICE.get(impact, '')}"]
     return "\n".join(lines)
 
@@ -76,6 +83,30 @@ def render_finding_md(finding: dict[str, Any]) -> str:
         f"(_analyst={finding.get('analyst')}, suggested impact={impact}_)\n"
         f"{finding.get('summary')}"
     )
+
+
+def render_security_finding_md(finding: dict[str, Any]) -> str:
+    """Security finding -> explainable block. Prints only what evidence establishes."""
+    lines = [
+        f"{finding.get('cve_id')}",
+        f"Relationship: {finding.get('relationship')}",
+        f"Match method: {finding.get('match_method')}",
+        f"Severity: {finding.get('severity', 'UNKNOWN')}",
+        f"KEV: {'yes' if finding.get('in_kev') else 'no'}",
+    ]
+    if finding.get("affected_package"):
+        lines.append(f"Affected package: {finding['affected_package']}")
+    if finding.get("affected_version"):
+        lines.append(f"Affected version: {finding['affected_version']}")
+    if finding.get("fixed_version"):
+        lines.append(f"Fixed version: {finding['fixed_version']}")
+    sources = finding.get("sources", [])
+    if sources:
+        lines.append("Evidence:")
+        lines += [f"- {s}" for s in sources]
+    if finding.get("recommended_action") and finding["recommended_action"] != "none":
+        lines += ["Recommended action:", f"  {finding['recommended_action']}"]
+    return "\n".join(lines)
 
 
 def render_digest(events: list[OSSEvent]) -> str:

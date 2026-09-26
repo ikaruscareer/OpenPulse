@@ -124,3 +124,30 @@ Deferred: impact split, knowledge graph, SQLite, CPE catalog.
    `PROJECT_ARCHIVED`, §23 acceptance test as permanent regression.
 5. **Supply-chain hygiene** — CI least privilege, CodeQL, pip-audit,
    Dependabot.
+
+## Addendum — Security Re-Implementation (schema 0.3.0)
+
+Follow-up review implemented, preserving all v0.2 behavior except
+deliberately tightened correlation:
+
+- **Conservative CPE identity** (`security_analyst.py`): normalized-exact
+  product equality only; `spring` no longer matches `spring-shell`.
+- **Version applicability** (`core/versions.py`): OSV events + NVD CPE
+  ranges evaluated to `True`/`False`/`None`; unknown caps at
+  `AFFECTS_PACKAGE`/`RELATED`. OSV parse retains affected ranges + fixed
+  versions; NVD parse retains range attributes.
+- **Findings record why**: `match_method`, `identity_evidence`,
+  `severity`, `urgency`, `recommended_action`, `affected_package`,
+  `affected_version`, `fixed_version`, `kev_match`.
+- **Claims** (`core/claims.py`, `OSSEvent.claims`/`attribution`): every
+  claim names supporting sources; contradicting evidence stays visible;
+  unresolved conflict blocks `ACTION`/`CRITICAL`; high-impact needs
+  official/primary or hashed provenance.
+- **Observations generalized** (`core/observations/base.py` + GitHub /
+  Lifecycle models); `Change` carries observation hashes; Bitnami probes
+  moved to `collectors/registries/reference.py` — generic acquisition
+  knows no products.
+- **Supply chain**: actions pinned to SHAs, `requirements.lock`,
+  10-test security boundary contract (`tests/test_boundary.py`),
+  strengthened north-star regression. Method: `IMPLEMENTATION_PLAN.md`;
+  record: `IMPLEMENTATION_SUMMARY.md`.

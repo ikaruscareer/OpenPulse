@@ -1,6 +1,6 @@
 {
   "id": "evt-bitnami-2025-distribution-001",
-  "schema_version": "0.2.0",
+  "schema_version": "0.3.0",
   "project_slug": "bitnami",
   "event_type": "DISTRIBUTION_CHANGE",
   "title": "Bitnami public catalog distribution/support change: versioned images moved to bitnamilegacy, mainline limited to latest-only community tier",
