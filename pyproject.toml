@@ -20,7 +20,7 @@ dependencies = [
 include = ["core*", "collectors*", "analyzers*", "cli*", "reports*", "integrations*"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "ruff>=0.5"]
+dev = ["pytest>=9.1.1", "ruff>=0.5"]
 
 [project.scripts]
 openpulse = "cli.main:cli"
