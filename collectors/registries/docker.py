@@ -7,6 +7,7 @@ from typing import Any
 import httpx
 
 from collectors.base import BaseCollector
+from collectors.errors import as_error
 
 
 def docker_hub_url(namespace: str, repo: str) -> str:
@@ -15,12 +16,19 @@ def docker_hub_url(namespace: str, repo: str) -> str:
 
 def parse_tags(namespace: str, repo: str, payload: dict[str, Any]) -> dict[str, Any]:
     tags = [t.get("name") for t in payload.get("results", [])]
+    digests = {}
+    for t in payload.get("results", []):
+        if not t.get("name"):
+            continue
+        ds = sorted({img.get("digest") for img in t.get("images", []) if img.get("digest")})
+        digests[t["name"]] = ds
     return {
         "collector": "registries",
         "registry": "docker.io",
         "namespace": namespace,
         "repo": repo,
         "tags_sample": tags,
+        "digests": digests,
         "count": payload.get("count"),
         "has_versioned_tags": any(t != "latest" for t in tags),
         "latest_only": bool(tags) and all(t == "latest" for t in tags),
@@ -46,12 +54,7 @@ class RegistryCollector(BaseCollector):
             r.raise_for_status()
             return parse_tags(namespace, repo, r.json())
         except Exception as e:
-            return {
-                "collector": "registries",
-                "namespace": namespace,
-                "repo": repo,
-                "error": str(e),
-            }
+            return as_error("registries", e, namespace=namespace, repo=repo)
 
     def collect(self, project_slug: str) -> list[dict[str, Any]]:
         # Generic entry: callers use check_image() for specific namespaces.

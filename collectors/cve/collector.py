@@ -14,6 +14,7 @@ from typing import Any
 import httpx
 
 from collectors.base import BaseCollector
+from collectors.errors import as_error
 
 API = "https://cveawg.mitre.org/api/cve/{cve_id}"
 CVE_RE = re.compile(r"^CVE-\d{4}-\d{4,}$", re.IGNORECASE)
@@ -71,4 +72,4 @@ class CVECollector(BaseCollector):
             r.raise_for_status()
             return [parse_record(r.json())]
         except Exception as e:  # network/API failure must never crash pipeline
-            return [{"collector": "cve", "id": cve_id, "error": str(e)}]
+            return [as_error("cve", e, id=cve_id)]

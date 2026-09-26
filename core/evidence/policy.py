@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from core.evidence.independence import independent_count
 from core.schema.enums import Confidence, EventType, Impact
 from core.schema.models import OSSEvent
 
@@ -45,11 +46,19 @@ def gate(event: OSSEvent) -> list[str]:
         if not any(e.source.authority == "official" for e in event.evidences):
             violations.append("CONFIRMED requires at least one evidence with authority=official")
 
-    # 3. CORROBORATED needs 2+ distinct sources
+    # 3. CORROBORATED needs 2+ independent sources (families, not names;
+    #    derived_from chains fold into their origin — see independence.py)
     if conf == "CORROBORATED":
-        names = {e.source.name for e in event.evidences}
-        if len(event.evidences) < 2 or len(names) < 2:
-            violations.append("CORROBORATED requires >=2 evidences from distinct sources")
+        if independent_count([e.model_dump() for e in event.evidences]) < 2:
+            violations.append(
+                "CORROBORATED requires >=2 independent evidences "
+                "(republished copies do not corroborate)"
+            )
+
+    # 3b. A claim needs at least one non-contradicting evidence.
+    relations = {e.relation for e in event.evidences}
+    if relations and relations == {"contradicts"}:
+        violations.append("event has only contradicting evidence — no support for the claim")
 
     # 4. Distribution/support/license/ownership must name affected artifacts
     if typ in REQUIRES_ARTIFACTS and not event.affected_artifacts:

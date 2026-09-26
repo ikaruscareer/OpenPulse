@@ -39,3 +39,15 @@ def purl_for(kind: str, namespace: str, name: str, version: str | None = None) -
         "generic": f"pkg:generic/{name}",
     }.get(kind, f"pkg:generic/{name}")
     return f"{base}@{version}" if version else base
+
+
+def project_context(slug: str) -> dict[str, Any]:
+    """Identity context for correlation: slug + aliases + vendor-ish names."""
+    entry = next((e for e in load_catalog() if e.get("slug") == slug), None)
+    if not entry:
+        return {"slug": slug}
+    return {
+        "slug": slug,
+        "aliases": list(entry.get("aliases") or []),
+        "vendors": [entry.get("display_name", ""), slug],
+    }

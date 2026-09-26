@@ -158,8 +158,82 @@ def analyze_registries(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return findings
 
 
+def analyze_github_meta(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Repository metadata rules: archived repos, license visibility."""
+    findings = []
+    for e in entries:
+        if e.get("error") or e.get("skipped") or e.get("kind") != "repo_meta":
+            continue
+        if e.get("archived"):
+            findings.append(
+                {
+                    "analyst": "change",
+                    "event_type": "PROJECT_ARCHIVED",
+                    "signal": "lifecycle",
+                    "title": f"{e.get('repo')} is archived on GitHub",
+                    "summary": "The repository is read-only; no fixes will "
+                    f"land. Last push {e.get('pushed_at')}. Migrate off it.",
+                    "impact": "ACTION",
+                    "affected_versions": ["*"],
+                    "affected_artifacts": [],
+                    "supporting": [e],
+                }
+            )
+    return findings
+
+
+DIFF_RULES = {
+    "tag_disappeared": (
+        "DISTRIBUTION_CHANGE",
+        "REVIEW",
+        "Tag `{tag}` disappeared from {ns}/{repo}",
+    ),
+    "tag_appeared": ("DISTRIBUTION_CHANGE", "WATCH", "Tag `{tag}` appeared in {ns}/{repo}"),
+    "tag_digest_changed": (
+        "DISTRIBUTION_CHANGE",
+        "WATCH",
+        "Digest behind `{tag}` changed in {ns}/{repo} — republished under the same name",
+    ),
+    "latest_moved": (
+        "DISTRIBUTION_CHANGE",
+        "WATCH",
+        "`latest` in {ns}/{repo} now resolves to a new digest — pin digests in production",
+    ),
+    "repo_missing": ("REGISTRY_CHANGE", "ACTION", "{ns}/{repo} disappeared from the registry"),
+    "repo_restored": ("REGISTRY_CHANGE", "INFORMATIONAL", "{ns}/{repo} reappeared in the registry"),
+}
+
+
+def analyze_diffs(changes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Detected observation diffs -> findings (no diff, no finding)."""
+    findings = []
+    for c in changes:
+        rule = DIFF_RULES.get(str(c.get("type", "")))
+        if not rule:
+            continue
+        event_type, impact, template = rule
+        ns, repo = c.get("namespace", "?"), c.get("repository", "?")
+        findings.append(
+            {
+                "analyst": "change",
+                "event_type": event_type,
+                "signal": "distribution",
+                "title": template.format(tag=c.get("tag"), ns=ns, repo=repo),
+                "summary": f"Observed {c.get('type')} at {c.get('observed_at')}.",
+                "impact": impact,
+                "affected_versions": ["*"],
+                "affected_artifacts": [
+                    {"kind": "docker-image", "ref": f"docker.io/{ns}/{repo}:{c.get('tag', '')}"}
+                ],
+                "supporting": [c],
+            }
+        )
+    return findings
+
+
 def analyze(raw: dict[str, list[dict[str, Any]]]) -> list[dict[str, Any]]:
     """Run all change rules over a raw collector bundle."""
     findings = analyze_endoflife(raw.get("endoflife", []))
     findings += analyze_registries(raw.get("registries", []))
+    findings += analyze_github_meta(raw.get("github_meta", []))
     return findings

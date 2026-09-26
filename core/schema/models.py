@@ -1,14 +1,15 @@
-"""OpenPulse Intelligence Schema v0.1.0 — pydantic models (source of truth)."""
+"""OpenPulse Intelligence Schema v0.2.0 — pydantic models (source of truth)."""
 
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from typing import Literal
 
 from pydantic import BaseModel, Field, HttpUrl
 
 from .enums import Confidence, EventType, Impact
 
-SCHEMA_VERSION = "0.1.0"
+SCHEMA_VERSION = "0.2.0"
 
 
 class Source(BaseModel):
@@ -16,6 +17,22 @@ class Source(BaseModel):
     url: HttpUrl
     authority: str = Field(description="official | primary | secondary | tertiary")
     fetched_at: datetime
+    # Provenance (all optional — v0.1.0 documents still validate).
+    family: str | None = Field(
+        default=None,
+        description="Independent-source family (e.g. 'bitnami'); "
+        "republished copies share the originator's family",
+    )
+    derived_from: str | None = Field(
+        default=None, description="Source name this evidence derives from, if any"
+    )
+    acquisition_method: str | None = Field(
+        default=None, description="e.g. 'https-collector', 'manual-curation'"
+    )
+    parser_version: str | None = Field(default=None, description="Parser that produced this record")
+    content_hash: str | None = Field(
+        default=None, description="sha256:<hex> over canonical source content"
+    )
 
 
 class Evidence(BaseModel):
@@ -23,6 +40,10 @@ class Evidence(BaseModel):
     excerpt: str = Field(max_length=2000)
     effective_date: date | None = None
     announcement_date: date | None = None
+    relation: Literal["supports", "context", "contradicts"] = Field(
+        default="supports",
+        description="How this evidence relates to the event claim",
+    )
 
 
 class CanonicalProject(BaseModel):

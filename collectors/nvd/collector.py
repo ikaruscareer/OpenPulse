@@ -11,6 +11,7 @@ from typing import Any
 import httpx
 
 from collectors.base import BaseCollector
+from collectors.errors import as_error
 
 API = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 
@@ -35,6 +36,18 @@ def _cvss(metrics: dict[str, Any]) -> dict[str, Any]:
     return {}
 
 
+def _cpes(configurations: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """CPE match criteria — the identity evidence keyword search cannot give."""
+    out = []
+    for config in configurations:
+        for node in config.get("nodes", []) + config.get("children", []):
+            for match in node.get("cpeMatch", []) + node.get("cpe_match", []):
+                criteria = match.get("criteria")
+                if criteria and not any(c["criteria"] == criteria for c in out):
+                    out.append({"criteria": criteria, "vulnerable": bool(match.get("vulnerable"))})
+    return out
+
+
 def parse_cves(payload: dict[str, Any]) -> list[dict[str, Any]]:
     out = []
     for item in payload.get("vulnerabilities", []):
@@ -47,6 +60,7 @@ def parse_cves(payload: dict[str, Any]) -> list[dict[str, Any]]:
                 "last_modified": cve.get("lastModified"),
                 "description": _description(cve.get("descriptions", [])),
                 "cvss": _cvss(cve.get("metrics", {})),
+                "cpes": _cpes(cve.get("configurations", [])),
                 "references": [r.get("url") for r in cve.get("references", []) if r.get("url")],
             }
         )
@@ -81,4 +95,4 @@ class NVDCollector(BaseCollector):
             vulns = parse_cves(r.json())
             return vulns or [{"collector": "nvd", "keyword": keyword, "vulns": 0}]
         except Exception as e:  # network/API failure must never crash pipeline
-            return [{"collector": "nvd", "project": project_slug, "error": str(e)}]
+            return [as_error("nvd", e, project=project_slug)]

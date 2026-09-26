@@ -11,20 +11,24 @@ from __future__ import annotations
 
 from typing import Any
 
+from core.evidence.independence import independent_count
 from core.evidence.policy import gate
 from core.schema.enums import Confidence
 from core.schema.models import OSSEvent
 
 
 def assess_confidence(evidences: list[dict[str, Any]]) -> Confidence:
-    """Official source -> CONFIRMED; 2+ distinct -> CORROBORATED; else EMERGING/UNVERIFIED."""
+    """Official source -> CONFIRMED; 2+ independent -> CORROBORATED; else EMERGING/UNVERIFIED.
+
+    Independence (not name count): derived_from chains fold into the
+    group they derive from, so a republished copy never corroborates.
+    """
     if not evidences:
         return Confidence.UNVERIFIED
     authorities = [e.get("source", {}).get("authority") for e in evidences]
     if "official" in authorities:
         return Confidence.CONFIRMED
-    names = {e.get("source", {}).get("name") for e in evidences}
-    if len(names) >= 2:
+    if independent_count(evidences) >= 2:
         return Confidence.CORROBORATED
     if any(a == "secondary" for a in authorities):
         return Confidence.EMERGING

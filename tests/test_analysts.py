@@ -77,6 +77,31 @@ def test_change_missing_repo():
 
 
 def test_security_correlate_kev_is_critical():
+    """KEV exact-ID + identity evidence (OSV scope) -> CRITICAL/AFFECTS."""
+    from analyzers.security_analyst import correlate
+
+    raw = {
+        "osv": [
+            {
+                "collector": "osv",
+                "id": "CVE-2024-0001",
+                "severity": [{"score": 5.0}],
+                "references": [],
+            }
+        ],
+        "kev": [{"collector": "kev", "cve_id": "CVE-2024-0001"}],
+        "nvd": [],
+        "cve": [],
+    }
+    out = correlate(raw)
+    assert out[0]["impact"] == "CRITICAL"
+    assert out[0]["in_kev"] is True
+    assert out[0]["relationship"] == "AFFECTS_PACKAGE"
+    assert set(out[0]["sources"]) == {"osv", "kev"}
+
+
+def test_security_kev_without_identity_is_review():
+    """Exploited CVE with no project tie -> RELATED, capped at REVIEW."""
     from analyzers.security_analyst import correlate
 
     raw = {
@@ -93,12 +118,12 @@ def test_security_correlate_kev_is_critical():
         "cve": [],
     }
     out = correlate(raw)
-    assert out[0]["impact"] == "CRITICAL"
-    assert out[0]["in_kev"] is True
-    assert set(out[0]["sources"]) == {"nvd", "kev"}
+    assert out[0]["impact"] == "REVIEW"
+    assert out[0]["relationship"] == "RELATED"
 
 
-def test_security_score_bands():
+def test_security_score_bands_keyword_only_capped():
+    """Keyword-only NVD hits are RELATED: severe scores cap at REVIEW."""
     from analyzers.security_analyst import correlate
 
     def finding(score):
@@ -113,11 +138,52 @@ def test_security_score_bands():
                     }
                 ]
             }
-        )[0]["impact"]
+        )[0]
 
-    assert finding(9.5) == "ACTION"
-    assert finding(7.5) == "REVIEW"
-    assert finding(5.0) == "WATCH"
+    assert finding(9.5)["impact"] == "REVIEW"
+    assert finding(9.5)["relationship"] == "RELATED"
+    assert finding(7.5)["impact"] == "REVIEW"
+    assert finding(5.0)["impact"] == "WATCH"
+
+
+def test_security_cpe_match_restores_action():
+    """CPE vendor/product identity turns the same CVE into AFFECTS_PACKAGE."""
+    from analyzers.security_analyst import correlate
+
+    raw = {
+        "nvd": [
+            {
+                "collector": "nvd",
+                "id": "CVE-2024-0009",
+                "cvss": {"base_score": 9.5},
+                "cpes": [{"criteria": "cpe:2.3:a:redis:redis:*:*:*:*:*:*:*:*", "vulnerable": True}],
+                "references": [],
+            }
+        ]
+    }
+    project = {"slug": "redis", "aliases": ["redis-server"], "vendors": ["Redis"]}
+    out = correlate(raw, project)[0]
+    assert out["relationship"] == "AFFECTS_PACKAGE"
+    assert out["impact"] == "ACTION"
+
+
+def test_security_weak_kev_never_critical():
+    from analyzers.security_analyst import correlate
+
+    raw = {
+        "nvd": [
+            {
+                "collector": "nvd",
+                "id": "CVE-2024-0011",
+                "cvss": {"base_score": 9.8},
+                "references": [],
+            }
+        ],
+        "kev": [{"collector": "kev", "cve_id": "CVE-2024-0011", "match": "weak"}],
+    }
+    out = correlate(raw)[0]
+    assert out["in_kev"] is False
+    assert out["impact"] == "REVIEW"
 
 
 def test_evidence_assess():

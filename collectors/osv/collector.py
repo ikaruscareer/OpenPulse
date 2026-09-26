@@ -7,6 +7,7 @@ from typing import Any
 import httpx
 
 from collectors.base import BaseCollector
+from collectors.errors import as_error
 
 API = "https://api.osv.dev/v1/query"
 
@@ -61,4 +62,4 @@ class OSVCollector(BaseCollector):
                 {"collector": "osv", "package": package, "ecosystem": ecosystem, "vulns": 0}
             ]
         except Exception as e:
-            return [{"collector": "osv", "project": project_slug, "error": str(e)}]
+            return [as_error("osv", e, project=project_slug)]

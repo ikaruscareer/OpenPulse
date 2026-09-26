@@ -87,7 +87,7 @@ Expected `demo-bitnami` result: 🚨 on every `bitnami*` ref, ✅ on upstream `r
 ## Repo layout
 
 ```
-core/schema/        # v0.1.0 Intelligence Schema — the source of truth
+core/schema/        # v0.2.0 Intelligence Schema — the source of truth
 core/entities/      # catalog + resolve() — canonical Project <-> Package/Artifact
 core/evidence/      # policy.py — the gate with veto power
 core/risk/          # match.py — event-vs-dependency impact matching

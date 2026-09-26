@@ -14,12 +14,50 @@ def cli():
     pass
 
 
+MAX_INPUT_BYTES = 1_000_000
+MAX_EVIDENCES = 100
+MAX_ARTIFACTS = 500
+
+
+def _load_json(path: str) -> dict:
+    """Bounded JSON load: size cap + clean errors (no tracebacks to users)."""
+    try:
+        size = __import__("os").path.getsize(path)
+    except OSError as e:
+        raise click.ClickException(f"cannot read {path}: {e.strerror or e}")
+    if size > MAX_INPUT_BYTES:
+        raise click.ClickException(f"{path} is {size} bytes (limit {MAX_INPUT_BYTES})")
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        raise click.ClickException(f"{path} is not valid JSON: {e}")
+    except UnicodeDecodeError:
+        raise click.ClickException(f"{path} is not UTF-8 text")
+
+
+def _load_event(path: str) -> OSSEvent:
+    from pydantic import ValidationError
+
+    data = _load_json(path)
+    if isinstance(data, dict):
+        if len(data.get("evidences", [])) > MAX_EVIDENCES:
+            raise click.ClickException(f"too many evidences (limit {MAX_EVIDENCES})")
+        if len(data.get("affected_artifacts", [])) > MAX_ARTIFACTS:
+            raise click.ClickException(f"too many artifacts (limit {MAX_ARTIFACTS})")
+    try:
+        return OSSEvent(**data)
+    except ValidationError as e:
+        first = e.errors()[0]
+        loc = ".".join(str(p) for p in first["loc"])
+        raise click.ClickException(f"{path} fails schema at `{loc}`: {first['msg']}")
+
+
 @cli.command()
 @click.option("--event", required=True, help="Path to OSSEvent JSON fixture")
 @click.option("--strict", is_flag=True, help="Fail if evidence gate violations exist")
 def validate(event, strict):
-    data = json.load(open(event))
-    e = OSSEvent(**data)
+    e = _load_event(event)
     from core.evidence.policy import gate
 
     violations = gate(e)
@@ -58,9 +96,11 @@ def _live_bundle(slug):
     from core.entities.catalog import load_catalog
 
     repo_map = {e["slug"]: e["github"] for e in load_catalog() if e.get("github")}
+    github = GitHubCollector(repo_map)
     return {
         "endoflife": EndoflifeCollector().collect(slug),
-        "github": GitHubCollector(repo_map).collect(slug),
+        "github": github.collect(slug),
+        "github_meta": [github.fetch_repo_meta(slug)],
         "nvd": NVDCollector().collect(slug),
         "kev": KEVCollector().collect(slug),
         "registries": RegistryCollector().collect(slug),
@@ -76,8 +116,7 @@ def analyze(project, raw_bundle):
     """Run analysts over live collectors (or an offline bundle) and print findings."""
     slug = resolve_project(project)
     if raw_bundle:
-        with open(raw_bundle, encoding="utf-8") as f:
-            raw = json.load(f)
+        raw = _load_json(raw_bundle)
         click.echo(f"bundle: {raw_bundle}")
     else:
         raw = _live_bundle(slug)
@@ -85,7 +124,9 @@ def analyze(project, raw_bundle):
             problems = [e for e in entries if e.get("error") or e.get("skipped")]
             click.echo(f"collector {name}: {len(entries)} records ({len(problems)} error/skipped)")
     change = change_analyst.analyze(raw)
-    security = security_analyst.correlate(raw)
+    from core.entities.catalog import project_context
+
+    security = security_analyst.correlate(raw, project_context(slug))
     click.echo(f"\n## Change findings ({len(change)})")
     for finding in change:
         click.echo("\n" + report_analyst.render_finding_md(finding))
@@ -101,8 +142,7 @@ def demo_bitnami():
     from core.evidence.policy import gate
     from core.risk.match import event_affects_ref
 
-    with open("data/fixtures/bitnami/event.json", encoding="utf-8") as f:
-        event = OSSEvent(**json.load(f))
+    event = _load_event("data/fixtures/bitnami/event.json")
     violations = gate(event)
     click.echo(f"event: {event.id} [{event.event_type.value}]")
     click.echo(f"confidence={event.confidence.value} impact={event.impact.value}")
@@ -121,3 +161,37 @@ def demo_bitnami():
         icon = "🚨" if result["affected"] else "✅"
         click.echo(f"{icon} {ref}: {result['detail']}")
     click.echo("\n" + report_analyst.render_event_md(event))
+
+
+@cli.command()
+@click.option("--namespace", required=True, help="Registry namespace (e.g. bitnami)")
+@click.option("--repo", "repository", required=True, help="Repository (e.g. redis)")
+@click.option("--store", default=".openpulse/observations", help="History root directory")
+def observe(namespace, repository, store):
+    """Probe a Docker Hub repo, persist the observation, diff against history."""
+    from collectors.registries.docker import RegistryCollector
+    from core.observations.registry import diff_observations, to_observation
+    from core.observations.store import load_previous, save_observation
+
+    probe = RegistryCollector().check_image(namespace, repository)
+    if probe.get("error"):
+        click.echo(f"error: {probe.get('safe_message')} (category={probe.get('category')})")
+        raise SystemExit(1)
+    current = to_observation(probe)
+    previous_raw = load_previous("docker.io", namespace, repository, root=store)
+    from core.observations.registry import RegistryObservation
+
+    previous = RegistryObservation(**previous_raw) if previous_raw else None
+    changes = diff_observations(previous, current)
+    path = save_observation(current.model_dump(mode="json"), root=store)
+    click.echo(f"saved: {path}")
+    if previous is None:
+        click.echo("baseline recorded — no previous observation, no change claims.")
+        return
+    if not changes:
+        click.echo("no changes since last observation.")
+        return
+    for change in changes:
+        click.echo(f"- {change.type}: {change.tag or ''} {change.previous} -> {change.current}")
+    for finding in change_analyst.analyze_diffs([c.model_dump(mode="json") for c in changes]):
+        click.echo("\n" + report_analyst.render_finding_md(finding))

@@ -7,6 +7,7 @@ from typing import Any
 import httpx
 
 from collectors.base import BaseCollector
+from collectors.errors import as_error
 
 
 def parse_product(product: str, payload: Any) -> list[dict[str, Any]]:
@@ -50,4 +51,4 @@ class EndoflifeCollector(BaseCollector):
             r.raise_for_status()
             return parse_product(project_slug, r.json())
         except Exception as e:
-            return [{"collector": "endoflife", "product": project_slug, "error": str(e)}]
+            return [as_error("endoflife", e, product=project_slug)]

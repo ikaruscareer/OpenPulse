@@ -15,15 +15,26 @@ Rules today:
   versioned tags → `DISTRIBUTION_CHANGE` / `ACTION`.
 - Any repo serving latest-only tags → `DISTRIBUTION_CHANGE` / `WATCH`.
 - Missing repo → `REGISTRY_CHANGE` / `REVIEW`.
-
-Not yet: `PROJECT_ARCHIVED` needs repo metadata (add a repo-meta
-collector input before claiming it).
+- Archived GitHub repo (via `fetch_repo_meta`) → `PROJECT_ARCHIVED` / `ACTION`.
+- Observation diffs (`analyze_diffs`): `tag_disappeared` → `REVIEW`,
+  `tag_appeared`/`tag_digest_changed`/`latest_moved` → `WATCH`,
+  `repo_missing` → `ACTION`, `repo_restored` → `INFORMATIONAL`.
 
 ## Security Analyst (`analyzers/security_analyst.py`)
 
 Merges OSV + NVD + CVE + KEV entries by CVE ID: source list, max CVSS,
-KEV flag, reference union. Impact: KEV → `CRITICAL`; score ≥ 9 →
-`ACTION`; ≥ 7 → `REVIEW`; else `WATCH`.
+KEV flag, reference union — plus a `relationship` label:
+
+- `AFFECTS_PACKAGE` — identity evidence exists (OSV query scope, NVD CPE
+  vendor/product match, or CNA affected-product match).
+- `RELATED` — the CVE exists but nothing ties it to this project
+  (keyword-only NVD hits land here and cap at `REVIEW`).
+- `UNKNOWN` — no score and no identity signal.
+
+Impact: KEV exact/strong + identity → `CRITICAL`; KEV alone →
+`REVIEW` (exploited, relation unconfirmed); identity + score ≥ 9 →
+`ACTION`; ≥ 7 → `REVIEW`; else `WATCH`. Weak KEV matches never set
+`in_kev`.
 
 ## Evidence Analyst (`analyzers/evidence_analyst.py`)
 

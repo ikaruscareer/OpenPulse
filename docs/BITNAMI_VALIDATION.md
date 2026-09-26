@@ -4,4 +4,4 @@ Required output for `data/fixtures/bitnami/event.json` (replace placeholders wit
 - announcement_date, effective_date, affected artifacts (e.g. docker.io/bitnami/*, bitnamicharts/*), affected versions
 - source URLs, excerpts, confidence (CONFIRMED needs official Bitnami/Broadcom URL), recommended investigation
 Run: `openpulse validate --event data/fixtures/bitnami/event.json`
-Acceptance: validates against core/schema v0.1.0 + 2 evidences, one official.
+Acceptance: validates against core/schema v0.2.0 + 2 evidences, one official.
