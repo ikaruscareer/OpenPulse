@@ -1,0 +1,67 @@
+# Canonical project catalog — single source for entity resolution (Phase 1).
+# Rules:
+# - `slug` is the canonical key used in OSSEvents and watchlists.
+# - `aliases` MUST be lowercase and tag/digest-free (validated by tests).
+# - `bitnami/*` namespaced refs intentionally resolve to `bitnami-*` stack
+#   slugs (not upstream `redis` etc.) so Bitnami distribution events keep
+#   their impact attribution: depending on docker.io/bitnami/redis means
+#   depending on the Bitnami stack, not on upstream Redis.
+- slug: bitnami
+  display_name: Bitnami catalog
+  github: bitnami/containers
+  website: https://bitnami.com
+  aliases: [bitnami]
+  docker_images: [docker.io/bitnami, docker.io/bitnamilegacy, docker.io/bitnamisecure]
+- slug: bitnami-redis-stack
+  display_name: Bitnami Redis stack
+  github: bitnami/containers
+  aliases: [bitnami/redis, bitnamilegacy/redis, bitnamisecure/redis]
+  docker_images: [docker.io/bitnami/redis, docker.io/bitnamilegacy/redis, docker.io/bitnamisecure/redis]
+- slug: redis
+  display_name: Redis
+  github: redis/redis
+  website: https://redis.io
+  aliases: [redis, redis-server, docker.io/redis, docker.io/library/redis]
+  docker_images: [docker.io/redis]
+- slug: postgresql
+  display_name: PostgreSQL
+  github: postgres/postgres
+  website: https://www.postgresql.org
+  aliases: [postgres, postgresql, postgresql-server, docker.io/postgres, docker.io/library/postgres]
+  docker_images: [docker.io/postgres]
+- slug: kafka
+  display_name: Apache Kafka
+  github: apache/kafka
+  website: https://kafka.apache.org
+  aliases: [kafka, apache/kafka]
+  docker_images: []
+- slug: keycloak
+  display_name: Keycloak
+  github: keycloak/keycloak
+  website: https://www.keycloak.org
+  aliases: [keycloak]
+  docker_images: []
+- slug: nodejs
+  display_name: Node.js
+  github: nodejs/node
+  website: https://nodejs.org
+  aliases: [nodejs, node, docker.io/library/node]
+  docker_images: [docker.io/library/node]
+- slug: openssl
+  display_name: OpenSSL
+  github: openssl/openssl
+  website: https://www.openssl.org
+  aliases: [openssl]
+  docker_images: []
+- slug: prometheus
+  display_name: Prometheus
+  github: prometheus/prometheus
+  website: https://prometheus.io
+  aliases: [prometheus]
+  docker_images: []
+- slug: grafana
+  display_name: Grafana
+  github: grafana/grafana
+  website: https://grafana.com
+  aliases: [grafana]
+  docker_images: []
