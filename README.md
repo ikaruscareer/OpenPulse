@@ -10,6 +10,8 @@
 >
 > From *"What is happening in open source?"* to *"What is happening to MY software?"*
 
+<img width="1024" height="1024" alt="OpenPulse" src="https://github.com/user-attachments/assets/f7e4b9c9-6f7c-49fa-8950-a5d1594829b7" />
+
 Most security tools tell you when your dependencies have a vulnerability.
 OpenPulse watches for something different: **what can change underneath your software.**
 We monitor the open-source ecosystem for end-of-life, support and license changes, registry and distribution changes, ownership changes, breaking changes and other supply-chain signals — then map those changes to the dependencies you actually use.
@@ -29,6 +31,8 @@ OpenPulse is part of an AI-era security story by [Ikarus Career](https://github.
 AI can introduce dependencies faster than humans can review them. OpenPulse helps you understand what those dependencies depend on — and what happens when the ecosystem underneath them changes. **AI writes code fast. OpenPulse watches what that code depends on.**
 
 ## The problem we solve
+
+<img width="1024" height="1024" alt="The problem we solve 2" src="https://github.com/user-attachments/assets/be884e68-0482-4954-aba1-907286d258c6" />
 
 In July 2025, Bitnami announced that effective **28 August 2025** its public `docker.io/bitnami` catalog would stop publishing versioned images: existing tags move to an unmaintained `bitnamilegacy` archive, the mainline goes `latest`-only community tier, and production use requires a Bitnami Secure Images subscription. Miss that one announcement and CI/CD pipelines, Helm releases, and production pulls break — with no CVE ever filed, so no scanner fires.
 
@@ -65,6 +69,9 @@ That is the bar for every OpenPulse event: **what changed, the evidence, who may
 
 ## One product, progressively more personal
 
+<img width="1024" height="1024" alt="What is changing in MY dependencies2" src="https://github.com/user-attachments/assets/c2930ba2-0866-4de4-b6b5-b028014b8026" />
+
+
 | Level | Customer question | OpenPulse answer | Status |
 |---|---|---|---|
 | Free | "What is happening in OSS?" | Monthly OSS Dependency Risk Report over the 100 open-source projects we believe matter most to modern software supply chains | Planned |
@@ -91,6 +98,8 @@ endoflife.date ──┤                    │ Evidence Analyst│── gate �
 Docker Hub ──────┘                    │ Report Analyst │   (confidence + impact + evidence)
                                       └───────────────┘
 ```
+
+<img width="1024" height="1024" alt="EarlyWarningLeadTime1" src="https://github.com/user-attachments/assets/04ebb832-2ae7-4e59-8e34-dba9ec0552dd" />
 
 Principles that make it different:
 
