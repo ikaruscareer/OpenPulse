@@ -65,3 +65,75 @@
   website: https://grafana.com
   aliases: [grafana]
   docker_images: []
+- slug: kubernetes
+  display_name: Kubernetes
+  github: kubernetes/kubernetes
+  website: https://kubernetes.io
+  aliases: [kubernetes, k8s]
+  docker_images: []
+- slug: helm
+  display_name: Helm
+  github: helm/helm
+  website: https://helm.sh
+  aliases: [helm]
+  docker_images: []
+- slug: terraform
+  display_name: Terraform
+  github: hashicorp/terraform
+  website: https://www.terraform.io
+  aliases: [terraform]
+  docker_images: []
+- slug: mysql
+  display_name: MySQL
+  github: mysql/mysql-server
+  website: https://www.mysql.com
+  aliases: [mysql, docker.io/library/mysql]
+  docker_images: [docker.io/library/mysql]
+- slug: mongodb
+  display_name: MongoDB
+  github: mongodb/mongo
+  website: https://www.mongodb.com
+  aliases: [mongodb, mongo, docker.io/library/mongo]
+  docker_images: [docker.io/library/mongo]
+- slug: rabbitmq
+  display_name: RabbitMQ
+  github: rabbitmq/rabbitmq-server
+  website: https://www.rabbitmq.com
+  aliases: [rabbitmq]
+  docker_images: []
+- slug: opentelemetry
+  display_name: OpenTelemetry
+  github: open-telemetry/opentelemetry-collector
+  website: https://opentelemetry.io
+  aliases: [opentelemetry, otel]
+  docker_images: []
+- slug: django
+  display_name: Django
+  github: django/django
+  website: https://www.djangoproject.com
+  aliases: [django]
+  docker_images: []
+- slug: fastapi
+  display_name: FastAPI
+  github: fastapi/fastapi
+  website: https://fastapi.tiangolo.com
+  aliases: [fastapi]
+  docker_images: []
+- slug: pytorch
+  display_name: PyTorch
+  github: pytorch/pytorch
+  website: https://pytorch.org
+  aliases: [pytorch, torch]
+  docker_images: []
+- slug: langchain
+  display_name: LangChain
+  github: langchain-ai/langchain
+  website: https://www.langchain.com
+  aliases: [langchain]
+  docker_images: []
+- slug: spring-boot
+  display_name: Spring Boot
+  github: spring-projects/spring-boot
+  website: https://spring.io/projects/spring-boot
+  aliases: [spring-boot, spring]
+  docker_images: []

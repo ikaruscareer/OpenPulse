@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "openpulse"
 version = "0.1.0"
-description = "OpenPulse - OSS change intelligence with evidence"
+description = "OpenPulse - OSS Dependency Intelligence with evidence"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"

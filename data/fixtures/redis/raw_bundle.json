@@ -1,0 +1,16 @@
+{
+  "endoflife": [
+    {"collector": "endoflife", "product": "redis", "cycle": "6.2", "eol": "2024-01-01", "support": "2023-01-01", "latest": "6.2.14"},
+    {"collector": "endoflife", "product": "redis", "cycle": "8.0", "eol": "2029-01-01", "support": "2028-01-01", "latest": "8.0.1"}
+  ],
+  "github": [
+    {"collector": "github", "repo": "redis/redis", "tag": "8.0.1", "published_at": "2026-08-01T00:00:00Z", "prerelease": false}
+  ],
+  "github_meta": [
+    {"collector": "github", "kind": "repo_meta", "repo": "redis/redis", "archived": false, "pushed_at": "2026-09-20T00:00:00Z"}
+  ],
+  "registries": [],
+  "nvd": [],
+  "osv": [],
+  "kev": []
+}

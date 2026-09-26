@@ -75,15 +75,26 @@ def validate(event, strict):
 
 
 @cli.command()
-@click.option("--project", required=True)
-@click.option("--show-signals", is_flag=True)
-def pulse(project, show_signals):
+@click.option("--project", required=True, help="Project slug or artifact ref")
+@click.option("--show-signals", is_flag=True, help="Show facet signals (always shown)")
+@click.option(
+    "--raw-bundle", type=click.Path(exists=True), help="Offline raw collector bundle JSON"
+)
+def pulse(project, show_signals, raw_bundle):
+    """OSS Pulse: computed facet status for one project (live or offline bundle)."""
+    from core.entities.catalog import project_context
+    from core.pulse import compute_pulse, format_pulse
+
     slug = resolve_project(project)
-    click.echo(f"{slug}")
-    if show_signals:
-        click.echo("Activity 🟢  Security 🟢  Lifecycle 🟢  Support 🟢")
-        click.echo("Licence 🟢  Distribution 🟢  Popularity 🟢")
-        click.echo("(v0.1 stub — wire collectors in Phase 1)")
+    if raw_bundle:
+        raw = _load_json(raw_bundle)
+    else:
+        raw = _live_bundle(slug)
+    findings = change_analyst.analyze(raw)
+    findings += security_analyst.correlate(raw, project_context(slug))
+    metas = [e for e in raw.get("github_meta", []) if e.get("kind") == "repo_meta"]
+    activity = {"releases": raw.get("github", []), "repo_meta": metas[0] if metas else None}
+    click.echo(format_pulse(compute_pulse(slug, findings=findings, activity=activity)))
 
 
 def _live_bundle(slug):

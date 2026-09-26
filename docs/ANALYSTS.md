@@ -43,6 +43,16 @@ sources → `CORROBORATED`; single secondary → `EMERGING`; else
 `UNVERIFIED`. `assemble_event` builds the OSSEvent and returns
 `(event, gate_violations)` — callers must handle violations.
 
+## OSS Pulse (`core/pulse.py`)
+
+`compute_pulse` maps findings + events to 7 facets (activity, security,
+lifecycle, support, licence, distribution, popularity). Worst impact
+wins per facet; the strongest title is kept as the reason, so every
+dot traces to a finding. Activity derives from repo metadata + release
+recency (archived → action, >365d stale → review); popularity stays
+informational until a real methodology lands. Rendered by
+`openpulse pulse --project <slug> [--raw-bundle file]`.
+
 ## Report Analyst (`analyzers/report_analyst.py`)
 
 `render_event_md`, `render_finding_md`, `render_digest`. Every claim
