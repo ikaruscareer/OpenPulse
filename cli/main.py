@@ -469,7 +469,13 @@ def _echo(msg: Any = "", **kwargs: Any) -> None:
 
 @cli.command()
 @click.option(
-    "--watchlist", required=True, type=click.Path(exists=True), help="Watchlist YAML file"
+    "--watchlist", required=False, type=click.Path(exists=True), help="Watchlist YAML file"
+)
+@click.option(
+    "--sbom",
+    "sbom",
+    type=click.Path(exists=True),
+    help="CycloneDX SBOM (JSON, spec 1.4/1.5) — composable with --watchlist",
 )
 @click.option(
     "--event",
@@ -499,7 +505,7 @@ def _echo(msg: Any = "", **kwargs: Any) -> None:
     is_flag=True,
     help="Opt in to plain-http webhooks (https is required by default)",
 )
-def check(watchlist, events, raw_bundle_dir, strict, digest, webhook, webhook_allow_http):
+def check(watchlist, sbom, events, raw_bundle_dir, strict, digest, webhook, webhook_allow_http):
     """Dependency Early Warning: evaluate a watchlist against events."""
     import json as _json
     from pathlib import Path as _Path
@@ -507,10 +513,29 @@ def check(watchlist, events, raw_bundle_dir, strict, digest, webhook, webhook_al
     from core.entities.resolve import resolve_project as _resolve
     from core.risk.check import check_dependency, load_watchlist_doc
 
-    try:
-        deps = load_watchlist_doc(_load_yaml(watchlist))
-    except ValueError as e:
-        raise click.ClickException(f"{watchlist}: {e}")
+    if not watchlist and not sbom:
+        raise click.ClickException("check needs --watchlist and/or --sbom")
+    deps: list[Any] = []
+    if watchlist:
+        try:
+            deps = load_watchlist_doc(_load_yaml(watchlist))
+        except ValueError as e:
+            raise click.ClickException(f"{watchlist}: {e}")
+    skipped: list[str] = []
+    if sbom:
+        from core.sbom_reader import read_sbom
+
+        try:
+            sbom_deps, skipped = read_sbom(sbom)
+        except ValueError as e:
+            raise click.ClickException(f"{sbom}: {e}")
+        except json.JSONDecodeError as e:
+            raise click.ClickException(f"{sbom} is not valid JSON: {e}")
+        if sbom_deps:
+            _echo(f"sbom: {len(sbom_deps)} mapped component(s), {len(skipped)} skipped")
+            deps = [*deps, *sbom_deps]
+        elif skipped:
+            _echo(f"sbom: 0 mapped, {len(skipped)} skipped — nothing checkable in this SBOM")
     loaded_events = [_load_event(path) for path in events]
     bundles = {}
     if raw_bundle_dir:
@@ -521,7 +546,12 @@ def check(watchlist, events, raw_bundle_dir, strict, digest, webhook, webhook_al
             bundle = _Path(raw_bundle_dir) / f"{slug}.json"
             if bundle.exists():
                 bundles[slug] = _json.loads(bundle.read_text(encoding="utf-8"))
+    if not deps:
+        raise click.ClickException("no checkable dependencies (watchlist/SBOM yielded nothing)")
     affected = 0
+    # Skipped SBOM components are reported, never silently dropped.
+    for line in skipped:
+        _echo(f"! skipped: {line}")
     # A flag, not a subcommand: digest is a presentation of the same run,
     # so --strict semantics stay identical in both shapes.
     results = [check_dependency(dep, loaded_events, bundles) for dep in deps]

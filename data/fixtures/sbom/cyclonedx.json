@@ -1,0 +1,38 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:3e671687-395b-41f5-a302-a23be3b4b901",
+  "version": 1,
+  "metadata": {
+    "component": {
+      "bom-ref": "root-app@1.0.0",
+      "type": "application",
+      "name": "root-app",
+      "version": "1.0.0",
+      "purl": "pkg:generic/root-app@1.0.0"
+    }
+  },
+  "components": [
+    {
+      "type": "container",
+      "bom-ref": "ref-redis",
+      "name": "redis",
+      "version": "7.2",
+      "purl": "pkg:docker/bitnami/redis@7.2"
+    },
+    {
+      "type": "library",
+      "bom-ref": "ref-django",
+      "name": "django",
+      "version": "5.0",
+      "purl": "pkg:pypi/django@5.0"
+    },
+    {
+      "type": "library",
+      "bom-ref": "ref-symfony",
+      "name": "symfony/http-foundation",
+      "version": "7.0",
+      "purl": "pkg:composer/symfony/http-foundation@7.0"
+    }
+  ]
+}

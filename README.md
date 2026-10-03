@@ -141,7 +141,7 @@ everything else. We do not compete on EOL record counts.
   Bitnami-namespace rules, and identity trust (VERIFIED /
   REVIEW_REQUIRED / UNVERIFIED — untrusted mappings cap verdicts at
   EMERGING).
-- **CLI**: validate events, run analysts live or offline, observe registries, sweep the catalog, render per-project Pulse, generate monthly reports, check watchlists (digest + webhook), and replay the Bitnami case end to end. Webhook delivery enforces an SSRF policy (https by default; `--webhook-allow-http` opts in).
+- **CLI**: validate events, run analysts live or offline, observe registries, sweep the catalog, render per-project Pulse, generate monthly reports, check watchlists and CycloneDX SBOMs (digest + webhook), and replay the Bitnami case end to end. Webhook delivery enforces an SSRF policy (https by default; `--webhook-allow-http` opts in).
 - **290+ tests**, `ruff` clean, CI green (Linux + Windows, incl. CodeQL + pip-audit, lock-drift check, deterministic SBOM, secret tripwire).
 
 ## Quickstart
@@ -168,6 +168,9 @@ openpulse report --month 2026-09 --raw-bundle-dir path/to/bundles
 
 # 6. Check your watchlist against an event (Early Warning preview)
 openpulse check --watchlist data/fixtures/watchlist_sample.yaml --event data/fixtures/bitnami/event.json
+
+   # or feed a CycloneDX SBOM (composable with a watchlist)
+openpulse check --sbom data/fixtures/sbom/cyclonedx.json --event data/fixtures/bitnami/event.json
 
 # 7. Run the test suite
 pytest -q
