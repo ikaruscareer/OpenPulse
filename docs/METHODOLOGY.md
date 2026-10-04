@@ -150,6 +150,28 @@ effective (applies). Lead times are never averaged, ranked, or
 marketed: the metric stays instrumented but unclaimed until
 independently measured incidents exist.
 
+### Durable detection ledger
+
+Sweep findings derive first detection from observation history, but
+lifecycle and security findings had no persisted history — warning
+windows died with the process. Watchlist runs (`openpulse check`)
+now record durable first detections under `.openpulse/detections/`
+(`core/detections/ledger.py`): one JSON entry per fact, keyed by
+stable identity — (project, class, subject, scope) where lifecycle
+facts use (project, `EOL`/`EOS`/`DEPRECATION`, sorted cycle versions)
+and security facts use (project, CVE id). The store reuses the
+observation-history trust model: atomic writes (temp + rename),
+per-project locks with stale reclaim, and content hashes over the
+fact identity. No hash chain: an entry is a standalone
+earliest-witness record, so its own content hash meets the
+integrity need, and absence — deleted or never written — is
+indistinguishable from never-detected, which is exactly the
+"unknown means unknown" rule. Earliest evidence wins, including
+under clock skew: a later stamp never overwrites, an earlier
+trustworthy stamp is taken (correcting it would be an estimate).
+Deleting the ledger degrades to per-run behavior — no claims, never
+invented dates.
+
 ## Research window and freshness
 
 OpenPulse researches the last 12 months (`core/freshness.py`).

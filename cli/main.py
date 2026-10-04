@@ -255,12 +255,28 @@ def observe(namespace, repository, store):
 )
 @click.option("--store", default=".openpulse/observations", help="History root for --with-sweep")
 @click.option(
+    "--ledger",
+    "ledger_root",
+    default=".openpulse/detections",
+    show_default=True,
+    help="Durable detection ledger root ('' disables; feeds first_detected_at in findings)",
+)
+@click.option(
     "--metadata-out",
     default="",
     help="Metadata JSON path (default: <out> with .meta.json extension)",
 )
 def report(
-    month, projects, raw_bundle_dir, out, since, include_related, with_sweep, store, metadata_out
+    month,
+    projects,
+    raw_bundle_dir,
+    out,
+    since,
+    include_related,
+    with_sweep,
+    store,
+    ledger_root,
+    metadata_out,
 ):
     """Monthly OSS Dependency Risk Report over seed projects."""
     import json as _json
@@ -323,6 +339,7 @@ def report(
         include_related=include_related,
         notes=notes,
         sweep_findings=sweep_findings,
+        ledger_root=ledger_root or None,
     )
     destination = out or f"reports/{month}-openpulse.md"
     _Path(destination).write_text(markdown + "\n", encoding="utf-8")
@@ -332,6 +349,7 @@ def report(
         sweep_findings,
         since=since or None,
         include_related=include_related,
+        ledger_root=ledger_root or None,
     )
     metadata = build_report_metadata(
         month,
@@ -485,6 +503,13 @@ def _echo(msg: Any = "", **kwargs: Any) -> None:
 )
 @click.option("--strict", is_flag=True, help="Exit 1 when any dependency is affected")
 @click.option(
+    "--ledger",
+    "ledger_root",
+    default=".openpulse/detections",
+    show_default=True,
+    help="Durable first-detection ledger root (recording is the default; '' disables)",
+)
+@click.option(
     "--digest",
     is_flag=True,
     help="Print grouped digest instead of per-dependency lines (cron-friendly)",
@@ -499,7 +524,9 @@ def _echo(msg: Any = "", **kwargs: Any) -> None:
     is_flag=True,
     help="Opt in to plain-http webhooks (https is required by default)",
 )
-def check(watchlist, events, raw_bundle_dir, strict, digest, webhook, webhook_allow_http):
+def check(
+    watchlist, events, raw_bundle_dir, ledger_root, strict, digest, webhook, webhook_allow_http
+):
     """Dependency Early Warning: evaluate a watchlist against events."""
     import json as _json
     from pathlib import Path as _Path
@@ -525,6 +552,44 @@ def check(watchlist, events, raw_bundle_dir, strict, digest, webhook, webhook_al
     # A flag, not a subcommand: digest is a presentation of the same run,
     # so --strict semantics stay identical in both shapes.
     results = [check_dependency(dep, loaded_events, bundles) for dep in deps]
+    # Durable detection ledger: an empty --ledger value disables it
+    # (per-run behavior, exactly like today); anything else is the root.
+    if ledger_root:
+        from core.detections.ledger import first_seen, record_detection
+        from core.risk.check import detections_from_verdicts
+
+        for fact in detections_from_verdicts(results, loaded_events):
+            record_detection(
+                fact["project"],
+                fact["finding_class"],
+                fact["subject"],
+                scope=fact["scope"],
+                root=ledger_root,
+            )
+        for result in results:
+            # Earliest across ALL of this verdict's recorded facts, not
+            # the first recorded fact: a dependency can carry a fresh
+            # lifecycle cause and a security record detected days earlier
+            # (lifecycle causes are appended before security ones), and
+            # the reported first detection must be the earliest of them.
+            earliest = min(
+                (
+                    seen
+                    for fact in detections_from_verdicts([result], loaded_events)
+                    if (
+                        seen := first_seen(
+                            fact["project"],
+                            fact["finding_class"],
+                            fact["subject"],
+                            scope=fact["scope"],
+                            root=ledger_root,
+                        )
+                    )
+                ),
+                default=None,
+            )
+            if earliest:
+                result.first_detected = str(earliest)[:10]
     if digest or webhook:
         from analyzers.report_analyst import render_check_digest
 
@@ -553,7 +618,10 @@ def check(watchlist, events, raw_bundle_dir, strict, digest, webhook, webhook_al
         relationship = result.relationship
         if result.affected:
             affected += 1
-            _echo(f"🚨 {label}: AFFECTED ({relationship})")
+            first_note = (
+                f" · first detected {result.first_detected}" if result.first_detected else ""
+            )
+            _echo(f"🚨 {label}: AFFECTED ({relationship}){first_note}")
             for verdict in result.verdicts:
                 if verdict["affected"]:
                     _echo(f"   - [{verdict['impact']}] {verdict['detail']}")

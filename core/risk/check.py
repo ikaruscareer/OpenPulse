@@ -92,6 +92,13 @@ class DependencyVerdict(BaseModel):
     verdicts: list[dict[str, Any]] = Field(
         default_factory=list, description="Retained per-cause verdicts (streams stay separate)"
     )
+    first_detected: str | None = Field(
+        default=None,
+        description=(
+            "Earliest durable ledger detection across this verdict's recorded "
+            "lifecycle/security causes; None when nothing is recorded (never a guess)"
+        ),
+    )
 
 
 def load_watchlist_doc(doc: dict[str, Any]) -> list[dict[str, Any]]:
@@ -149,6 +156,8 @@ def _event_scope_cause(dep: dict[str, Any], event: OSSEvent) -> dict[str, Any] |
     base: dict[str, Any] = {
         "cause": "upstream_change",
         "event_id": event.id,
+        "event_type": event.event_type.value,
+        "project": event.project_slug,
         "impact": event.impact.value,
         "evidence": [e.source.name for e in event.evidences],
         "evidence_confidence": event.confidence.value,
@@ -253,6 +262,8 @@ def _security_causes(dep: dict[str, Any], bundles: dict[str, dict[str, Any]]) ->
                 "affected": relationship in ("AFFECTS_VERSION", "AFFECTS_PACKAGE"),
                 "match_method": finding.get("match_method"),
                 "event_id": finding.get("cve_id"),
+                "event_type": "SECURITY",
+                "project": slug,
                 "impact": finding.get("impact"),
                 "evidence": list(finding.get("sources", [])),
                 "evidence_confidence": str(finding.get("confidence") or "UNVERIFIED"),
@@ -377,6 +388,8 @@ def check_dependency(
                     if match["via"]
                     else "project_scope",
                     "event_id": event.id,
+                    "event_type": event.event_type.value,
+                    "project": event.project_slug,
                     "impact": event.impact.value,
                     "evidence": [e.source.name for e in event.evidences],
                     "evidence_confidence": event.confidence.value,
@@ -404,3 +417,87 @@ def check_watchlist(
 ) -> list[DependencyVerdict]:
     """Whole watchlist -> one verdict per dependency."""
     return [check_dependency(dep, events, bundles) for dep in deps]
+
+
+#: Event types whose findings describe a *durable* lifecycle fact -
+#: re-detectable across runs, and the ledger is what makes their first
+#: detection survive the process. Distribution/registry changes keep
+#: their own durable first-detection via observation history diffs.
+_LIFECYCLE_EVENT_TYPES = frozenset({"EOL", "EOS", "DEPRECATION", "SUPPORT_CHANGE"})
+
+#: Relationships asserting the dependency is implicated: the only
+#: ones that start (or continue) a durable detection record.
+_AFFECTED_RELATIONSHIPS = frozenset({"AFFECTS_VERSION", "AFFECTS_PACKAGE", "AFFECTS_ARTIFACT"})
+
+
+def detections_from_verdicts(
+    verdicts: list[DependencyVerdict],
+    events: list[OSSEvent] | None = None,
+) -> list[dict[str, Any]]:
+    """Durable detection facts carried by check verdicts.
+
+    Pure function - verdicts in, ledger-shaped fact descriptors out
+    (project, finding_class, subject, scope terms); no writes here.
+    The fact identity is deliberately announcement-independent:
+    lifecycle facts key as (project, event_type, cycle versions) and
+    security facts as (project, CVE id), so the same underlying fact
+    reported by different events/sources across runs maps to ONE
+    ledger entry. `events` supplies the scope versions for lifecycle
+    causes (the cause carries the event id). Only impact-asserting
+    relationships contribute: a RELATED tie is context, not a
+    detection worth remembering, and UNKNOWN means no evidence.
+    Never invents: causes without a usable identity are skipped.
+    """
+    from core.detections import ledger
+
+    events_by_id = {e.id: e for e in events or []}
+    facts: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, str, tuple[str, ...]]] = set()
+    for verdict in verdicts:
+        for cause in verdict.verdicts:
+            if str(cause.get("relationship", "")) not in _AFFECTED_RELATIONSHIPS:
+                continue
+            project = str(cause.get("project") or "")
+            if not project:
+                continue  # no stable project -> nothing durable
+            if cause.get("cause") == "security_vulnerability":
+                subject = str(cause.get("event_id") or "")
+                if not subject:
+                    continue
+                key = (project, ledger.SECURITY, subject, ())
+                if key in seen:
+                    continue
+                seen.add(key)
+                facts.append(
+                    {
+                        "project": project,
+                        "finding_class": ledger.SECURITY,
+                        "subject": subject,
+                        "scope": [],
+                    }
+                )
+                continue
+            if cause.get("cause") != "upstream_change":
+                continue
+            event_type = str(cause.get("event_type") or "")
+            if event_type not in _LIFECYCLE_EVENT_TYPES:
+                continue  # distribution changes keep observation-history detection
+            event = events_by_id.get(str(cause.get("event_id") or ""))
+            if event is None or event.scope is None:
+                continue
+            versions = sorted({str(v) for v in event.scope.versions or []})
+            if not versions:
+                continue
+            key = (project, ledger.LIFECYCLE, event_type, tuple(versions))
+            if key in seen:
+                continue
+            seen.add(key)
+            facts.append(
+                {
+                    "project": project,
+                    "finding_class": ledger.LIFECYCLE,
+                    "subject": event_type,
+                    "scope": versions,
+                }
+            )
+    return facts

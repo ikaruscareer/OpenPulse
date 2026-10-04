@@ -81,7 +81,12 @@ Temporal roles are never conflated (`core/leadtime.py`):
 - `first_detected_at` — our first trustworthy detection. Inherited
   from the predecessor observation by `core/observations/base.py`
   and resolved by `core/observations/sweep.py:first_detected_at_for`;
-  re-observations never stand in for discovery.
+  re-observations never stand in for discovery. Lifecycle and
+  security findings have no observation history, so watchlist runs
+  persist them in the durable detection ledger
+  (`core/detections/ledger.py`, `.openpulse/detections/`) — the
+  earliest detection survives the process, and a missing entry
+  still means no claim (never estimated).
 - `observed_at` — when the analyst ran (analysis time).
 
 `lifecycle_state` (`STATE_EFFECTIVE`/`STATE_UPCOMING`,

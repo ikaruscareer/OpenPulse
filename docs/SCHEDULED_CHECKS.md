@@ -14,6 +14,15 @@ summary instead of per-dependency lines — the shape to archive or post.
 Use `--raw-bundle-dir` with checked-in offline bundles when the
 schedule must not depend on upstream APIs that day.
 
+Recording is on by default: every scheduled run persists durable
+first detections to `.openpulse/detections/` (the detection ledger),
+so a warning window survives across cron runs — a re-detected
+lifecycle or security fact reports its original first-seen date,
+never "today". Pass `--ledger ''` to disable recording for a run
+(no claims are made, nothing is written). Point two schedules at
+different roots with `--ledger <path>` to keep their histories
+independent.
+
 ## GitHub Actions (weekly + CI gate)
 
 ```yaml

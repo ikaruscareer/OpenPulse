@@ -413,10 +413,12 @@ def render_check_digest(verdicts: list[Any], title: str = "OpenPulse watchlist d
                 else ("RELATED" if relationship in ("RELATED", "AFFECTS_PROJECT") else "UNKNOWN")
             )
         icon, items = sections[bucket]
+        first_detected = _verdict_field(verdict, "first_detected", None)
+        first_note = f" · first detected {first_detected}" if first_detected else ""
         items.append(
             f"{icon} {_verdict_field(verdict, 'dependency', '?')}"
             f" [{_verdict_field(verdict, 'relationship', '?')}]"
-            f" — {_verdict_field(verdict, 'reason', '')}"
+            f" — {_verdict_field(verdict, 'reason', '')}{first_note}"
         )
     affected = len(sections["AFFECTED"][1])
     lines = [f"# {title}", "", f"{affected}/{len(verdicts)} dependencies affected", ""]

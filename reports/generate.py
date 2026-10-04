@@ -266,17 +266,79 @@ def _in_main_report(finding: dict[str, Any]) -> bool:
     return False
 
 
+def _ledger_fact(finding: dict[str, Any]) -> tuple[str, list[str]] | None:
+    """(finding_class, subject, scope terms) for one finding in ledger terms.
+
+    Identity contract - MUST mirror ``check.detections_from_verdicts``
+    exactly: security facts key as (project, SECURITY, CVE id, no
+    scope); lifecycle facts key as (project, LIFECYCLE, event_type,
+    sorted cycle versions). Findings with no stable subject
+    (distribution changes etc.) -> None; those keep their own
+    durable first-detection through observation history, never the
+    ledger.
+    """
+    from core.detections.ledger import LIFECYCLE, SECURITY
+
+    cve = finding.get("cve_id")
+    if cve:
+        return (SECURITY, str(cve), [])
+    event_type = str(finding.get("event_type") or "")
+    if event_type in ("EOL", "EOS", "DEPRECATION"):
+        scope = finding.get("scope") or {}
+        versions = [str(v) for v in scope.get("versions") or []] or [
+            str(v) for v in finding.get("affected_versions") or []
+        ]
+        if not versions:
+            return None
+        return (LIFECYCLE, event_type, sorted(versions))
+    return None
+
+
+def _with_ledger_first_detected(
+    finding: dict[str, Any], project: str | None, ledger_root: str | None
+) -> dict[str, Any]:
+    """Copy of one finding with ledger first_seen as first_detected_at.
+
+    No-op unless ALL of: ledger enabled, finding lacks a
+    first_detected_at already, and the finding maps to a durable
+    ledger fact. Never invents - absent entry -> unchanged finding.
+    """
+    if not ledger_root:
+        return finding
+    if finding.get("first_detected_at"):
+        return finding
+    fact = _ledger_fact(finding)
+    if fact is None:
+        return finding
+    from core.detections.ledger import first_seen
+
+    finding_class, subject, scope = fact
+    earliest = first_seen(str(project or ""), finding_class, subject, scope=scope, root=ledger_root)
+    if not earliest:
+        return finding
+    return {**finding, "first_detected_at": str(earliest)[:10]}
+
+
 def prepare_report(
     items: list[dict[str, Any]],
     sweep_findings: list[dict[str, Any]] | None = None,
     since: str | None = None,
     include_related: bool = False,
     today: date | None = None,
+    ledger_root: str | None = None,
 ) -> dict[str, Any]:
     """Assess + classify + place findings without rendering.
 
     Shared by `build_report` and metadata/CLI consumers so placement
     logic lives in exactly one place. Never mutates the caller's items.
+
+    `ledger_root` (from ``openpulse report --ledger``) attaches the
+    durable detection ledger's ``first_seen`` to findings lacking a
+    ``first_detected_at`` (lifecycle findings from endoflife.date and
+    security findings from CVE correlation have none), so warning
+    windows survive across runs. An existing first_detected_at is
+    never overwritten, and an absent ledger entry adds nothing -
+    unknown stays unknown, never estimated.
     """
     today = today or date.today()
     held_back = 0
@@ -284,6 +346,7 @@ def prepare_report(
     for item in items:
         # Copy: filtering must never mutate the caller's bundles.
         kept = [f for f in item.get("findings", []) if _fresh(f, since)]
+        kept = [_with_ledger_first_detected(f, item.get("project"), ledger_root) for f in kept]
         held_back += sum(1 for f in kept if not _narrate(f, include_related))
         narrated = aggregate_lifecycle([f for f in kept if _narrate(f, include_related)])
         assessed = []
@@ -328,6 +391,7 @@ def build_report(
     notes: list[str] | None = None,
     sweep_findings: list[dict[str, Any]] | None = None,
     today: date | None = None,
+    ledger_root: str | None = None,
 ) -> str:
     """Monthly public intelligence briefing — web-frontend-ready markdown.
 
@@ -344,7 +408,9 @@ def build_report(
     arithmetic for deterministic tests; defaults to the current date.
     """
     today = today or date.today()
-    prepared = prepare_report(items, sweep_findings, since, include_related, today)
+    prepared = prepare_report(
+        items, sweep_findings, since, include_related, today, ledger_root=ledger_root
+    )
     scoped = prepared["scoped"]
     assessed_sweep = prepared["assessed_sweep"]
     held_back = prepared["held_back"]
